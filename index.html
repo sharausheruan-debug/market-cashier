@@ -195,6 +195,16 @@
             document.querySelectorAll('.options-menu').forEach(m => m.style.display = 'none');
         }
     }
+      function deleteItem(index) {
+        let products = JSON.parse(localStorage.getItem('myStore')) || [];
+        products.splice(index, 1); // سڕینەوەی کاڵاکە لە لیستەکە
+        localStorage.setItem('myStore', JSON.stringify(products)); // نوێکردنەوەی داتا
+        loadItems(); // بانگکردنەوەی لیستەکە بۆ ئەوەی ڕاستەوخۆ دیار نەمێنێت
+        
+        // داخستنی مێنۆکە دوای سڕینەوە
+        document.querySelectorAll('.options-menu').forEach(m => m.style.display = 'none');
+    }
+
 
 
     function updateUI() {

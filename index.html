@@ -2,32 +2,27 @@
 <html lang="ku" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>کاشێری زیرەک</title>
+    <title>کاشێری زیرەکی مارکێت</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: sans-serif; background: #f1f5f9; margin: 0; padding: 0; }
-        
-        /* مێنوی مۆدێرن و ڕێکخراو */
         .menu-btn { position: fixed; top: 20px; right: 20px; z-index: 2000; background: #0f172a; color: white; padding: 10px 15px; border-radius: 12px; cursor: pointer; font-size: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .sidebar { height: 100%; width: 0; position: fixed; top: 0; right: 0; background: #ffffff; overflow-x: hidden; transition: 0.4s; padding-top: 100px; box-shadow: -5px 0 15px rgba(0,0,0,0.2); z-index: 1500; }
-        .sidebar button { display: block; width: 85%; margin: 15px auto; padding: 16px; border: none; border-radius: 12px; background: #e2e8f0; color: #0f172a; font-weight: bold; cursor: pointer; font-size: 16px; }
-        
+        .sidebar { height: 100%; width: 0; position: fixed; top: 0; right: 0; background: #fff; transition: 0.4s; padding-top: 100px; box-shadow: -5px 0 15px rgba(0,0,0,0.2); z-index: 1500; }
+        .sidebar button { display: block; width: 85%; margin: 15px auto; padding: 16px; border: none; border-radius: 12px; background: #e2e8f0; color: #0f172a; font-weight: bold; cursor: pointer; }
         .container { padding: 80px 20px; max-width: 400px; margin: auto; }
-        .section { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .section { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
         input { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
-        .cart-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; align-items: center; }
+        .cart-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
         .total-box { font-size: 1.5em; font-weight: bold; text-align: center; margin: 15px 0; color: #0284c7; }
-        button.del-btn { background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="menu-btn" onclick="toggleNav()">☰</div>
-
 <div id="mySidebar" class="sidebar">
     <button onclick="showSection('posSection')">بەشی کاشێر</button>
     <button onclick="showSection('addSection')">تۆمارکردنی کاڵا</button>
+    <button onclick="showSection('reportSection')">مێژووی فرۆشتن</button>
 </div>
 
 <div class="container">
@@ -37,8 +32,8 @@
         <div id="reader" style="width:100%; margin: 15px 0; background:#eee; border-radius:10px; overflow:hidden;"></div>
         <div id="cartList"></div>
         <div class="total-box">کۆی گشتی: <span id="totalPrice">0</span> IQD</div>
+        <button onclick="saveSale()" style="background:#8b5cf6; color:white; width:100%; padding:10px; border-radius:10px; border:none; margin-bottom:10px;">تۆمارکردنی فرۆشتن</button>
         <button onclick="printReceipt()" style="background:#f59e0b; color:white; width:100%; padding:10px; border-radius:10px; border:none;">چاپکردنی پسوڵە</button>
-        <button onclick="clearCart()" style="background:#64748b; color:white; width:100%; padding:10px; border-radius:10px; border:none; margin-top:10px;">پاککردنەوەی لیست</button>
     </div>
 
     <div id="addSection" class="section" style="display:none;">
@@ -48,6 +43,11 @@
         <input type="number" id="price" placeholder="نرخ">
         <button onclick="saveProduct()" style="background:#0284c7; color:white; width:100%; padding:15px; border:none; border-radius:10px;">پاشەکەوتکردن</button>
     </div>
+
+    <div id="reportSection" class="section" style="display:none;">
+        <h2>مێژووی فرۆشتن</h2>
+        <div id="salesList"></div>
+    </div>
 </div>
 
 <script>
@@ -55,19 +55,17 @@
     let html5QrCode = new Html5Qrcode("reader");
 
     function toggleNav() { document.getElementById("mySidebar").style.width = "260px"; }
-    
     function showSection(id) {
-        document.getElementById('posSection').style.display = (id === 'posSection') ? 'block' : 'none';
-        document.getElementById('addSection').style.display = (id === 'addSection') ? 'block' : 'none';
+        document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+        document.getElementById(id).style.display = 'block';
         document.getElementById("mySidebar").style.width = "0";
+        if(id === 'reportSection') loadSales();
     }
 
     function saveProduct() {
         const name = document.getElementById('name').value;
         const code = document.getElementById('code').value;
         const price = document.getElementById('price').value;
-        if(!name || !code || !price) return alert("تکایە هەموو خانەکان پڕ بکەرەوە");
-        
         let products = JSON.parse(localStorage.getItem('myStore')) || [];
         products.push({ name, code, price });
         localStorage.setItem('myStore', JSON.stringify(products));
@@ -80,10 +78,10 @@
             let found = products.find(p => p.code === decodedText.trim());
             if(found) {
                 let existing = cart.find(item => item.code === found.code);
-                if(existing) { existing.qty = (existing.qty || 1) + 1; } 
+                if(existing) existing.qty = (existing.qty || 1) + 1;
                 else { found.qty = 1; cart.push(found); }
                 updateUI();
-            } else { alert("ئەم کاڵایە نەدۆزرایەوە!"); }
+            }
         });
     }
 
@@ -93,17 +91,25 @@
         let sum = 0;
         cart.forEach((item, index) => {
             sum += (parseFloat(item.price) * item.qty);
-            list.innerHTML += `<div class="cart-item">
-                <span>${item.name} (${item.qty}x)</span>
-                <span>${item.price * item.qty} IQD</span>
-                <button class="del-btn" onclick="removeItem(${index})">X</button>
-            </div>`;
+            list.innerHTML += `<div class="cart-item"><span>${item.name} (${item.qty}x)</span><span>${item.price * item.qty} IQD</span></div>`;
         });
         document.getElementById('totalPrice').innerText = sum;
     }
 
-    function removeItem(index) { cart.splice(index, 1); updateUI(); }
-    function clearCart() { cart = []; updateUI(); }
+    function saveSale() {
+        let sales = JSON.parse(localStorage.getItem('mySales')) || [];
+        sales.push({ date: new Date().toLocaleString(), total: document.getElementById('totalPrice').innerText });
+        localStorage.setItem('mySales', JSON.stringify(sales));
+        alert("فرۆشتنەکە تۆمارکرا!");
+        cart = []; updateUI();
+    }
+
+    function loadSales() {
+        const list = document.getElementById('salesList');
+        let sales = JSON.parse(localStorage.getItem('mySales')) || [];
+        list.innerHTML = sales.map(s => `<div>${s.date}: ${s.total} IQD</div>`).join('<hr>');
+    }
+
     function printReceipt() { window.print(); }
 </script>
 </body>

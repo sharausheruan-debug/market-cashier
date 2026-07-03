@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>کاشێری زیرەکی مارکێت</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: sans-serif; background: #f1f5f9; margin: 0; padding: 0; }
+        .menu-btn { position: fixed; top: 20px; right: 20px; font-size: 28px; cursor: pointer; z-index: 1000; background: white; padding: 5px 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .sidebar { height: 100%; width: 0; position: fixed; top: 0; right: 0; background: #fff; overflow-x: hidden; transition: 0.3s; padding-top: 80px; box-shadow: -2px 0 5px rgba(0,0,0,0.1); z-index: 999; }
+        .sidebar button { display: block; width: 90%; margin: 10px auto; padding: 15px; border: none; border-radius: 10px; background: #0f172a; color: white; cursor: pointer; }
+        .container { padding: 80px 20px; max-width: 400px; margin: auto; }
+        .section { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
+        #reader { width: 100%; margin: 15px 0; border-radius: 10px; overflow: hidden; background: #eee; }
+        .cart-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .total-box { font-size: 1.4em; font-weight: bold; text-align: center; margin: 15px 0; color: #0284c7; }
+    </style>
+</head>
+<body>
+
+<div class="menu-btn" onclick="toggleNav()">☰</div>
+
+<div id="mySidebar" class="sidebar">
+    <button onclick="showSection('posSection')">بەشی کاشێر</button>
+    <button onclick="showSection('addSection')">تۆمارکردنی کاڵا</button>
+</div>
+
+<div class="container">
+    <div id="posSection" class="section">
+        <h2>سیستەمی کاشێر</h2>
+        <button onclick="initScanner()" style="background:#059669; color:white; width:100%; padding:15px; border:none; border-radius:10px;">کردنەوەی کامێرا بۆ سکان</button>
+        <div id="reader"></div>
+        <div id="cartList"></div>
+        <div class="total-box">کۆی گشتی: <span id="totalPrice">0</span></div>
+        <button onclick="clearCart()" style="background:#ef4444; color:white; width:100%; padding:15px; border:none; border-radius:10px;">سڕینەوەی لیست</button>
+    </div>
+
+    <div id="addSection" class="section" style="display:none;">
+        <h2>تۆمارکردنی کاڵا</h2>
+        <input type="text" id="name" placeholder="ناوی کاڵا">
+        <input type="text" id="code" placeholder="بارکۆد">
+        <input type="number" id="price" placeholder="نرخ">
+        <button onclick="saveProduct()" style="background:#0284c7; color:white; width:100%; padding:15px; border:none; border-radius:10px;">پاشەکەوتکردن</button>
+    </div>
+</div>
+
+<script>
+    let cart = [];
+    let html5QrCode = new Html5Qrcode("reader");
+
+    function toggleNav() { document.getElementById("mySidebar").style.width = "250px"; }
+    
+    function showSection(id) {
+        document.getElementById('posSection').style.display = (id === 'posSection') ? 'block' : 'none';
+        document.getElementById('addSection').style.display = (id === 'addSection') ? 'block' : 'none';
+        document.getElementById("mySidebar").style.width = "0";
+    }
+
+    function saveProduct() {
+        const name = document.getElementById('name').value;
+        const code = document.getElementById('code').value;
+        const price = document.getElementById('price').value;
+        if(!name || !code || !price) return alert("تکایە هەموو خانەکان پڕ بکەرەوە");
+        
+        let products = JSON.parse(localStorage.getItem('myStore')) || [];
+        products.push({ name, code, price });
+        localStorage.setItem('myStore', JSON.stringify(products));
+        alert("بە سەرکەوتوویی تۆمارکرا!");
+    }
+
+    function initScanner() {
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            (decodedText) => {
+                let products = JSON.parse(localStorage.getItem('myStore')) || [];
+                let found = products.find(p => p.code === decodedText.trim());
+                if(found) {
+                    cart.push(found);
+                    updateUI();
+                } else { alert("ئەم کاڵایە لە سیستەمدا نییە!"); }
+            }
+        ).catch(err => alert("کێشەیەک لە کامێرا هەیە: " + err));
+    }
+
+    function updateUI() {
+        const list = document.getElementById('cartList');
+        list.innerHTML = "";
+        let sum = 0;
+        cart.forEach(item => {
+            sum += parseFloat(item.price);
+            list.innerHTML += `<div class="cart-item"><span>${item.name}</span><span>${item.price} IQD</span></div>`;
+        });
+        document.getElementById('totalPrice').innerText = sum + " IQD";
+    }
+
+    function clearCart() { cart = []; updateUI(); }
+</script>
+
+</body>
+</html>
